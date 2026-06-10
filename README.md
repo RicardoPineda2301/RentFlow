@@ -44,7 +44,12 @@ Navigate to the frontend container and initialize the development instance:
 
 cd frontend
 npm install
-npm run dev
+
+### Backend Execution
+Navigate to the frontend container and initialize the development instance:
+
+cd backend
+npm install
 
 ### Bucket initialization
 Open your browser and go to http://localhost:9001.
