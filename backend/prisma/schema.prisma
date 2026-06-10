@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 datasource db {
   provider = "postgresql"
 }
@@ -11,29 +6,42 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Project {
+  id         String      @id @default(uuid())
+  name       String      // Ej: "Residencial Miralbueno" o "Condominio Norte"
+  address    String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  apartments Apartment[]
+}
+
 model Apartment {
-  id           String     @id @default(uuid())
-  unitNumber   String     @unique // e.g., "Apt 101"
-  buildingBlock String    // e.g., "Block A"
-  bedrooms     Int
-  bathrooms    Int
-  monthlyRent  Float
-  status       String     @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE
-  photos       String[]   // Array of S3/MinIO Object Keys
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  contracts    Contract[]
+  id            String     @id @default(uuid())
+  projectId     String
+  unitNumber    String     // Ej: "Apt 101", "3B"
+  sizeM2        Float      // Metros cuadrados
+  bedrooms      Int
+  bathrooms     Int
+  monthlyRent   Float      // Renta base sugerida
+  status        String     @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contracts     Contract[]
+
+  @@unique([projectId, unitNumber]) // Evita que haya dos "Apt 101" en el mismo proyecto
 }
 
 model Tenant {
-  id        String     @id @default(uuid())
-  firstName String
-  lastName  String
-  email     String     @unique
-  phone     String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  contracts Contract[]
+  id         String     @id @default(uuid())
+  firstNames String     // Todos sus nombres
+  lastNames  String     // Todos sus apellidos
+  email      String     @unique
+  phone      String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  contracts  Contract[]
 }
 
 model Contract {
@@ -42,8 +50,8 @@ model Contract {
   tenantId        String
   startDate       DateTime
   endDate         DateTime
-  monthlyRentRate Float
-  contractPdfKey  String?   // S3/MinIO Object Key for the PDF
+  monthlyRentRate Float     // El precio final real acordado en el contrato
+  s3PdfKey        String?   // Referencia al archivo PDF firmado en MinIO/S3
   status          String    @default("ACTIVE") // ACTIVE, EXPIRED, TERMINATED
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -56,9 +64,9 @@ model Contract {
 model Payment {
   id          String   @id @default(uuid())
   contractId  String
-  amountPaid  Float
-  dueDate     DateTime
-  paymentDate DateTime?
+  amount      Float    // Cantidad a pagar este mes
+  dueDate     DateTime // Fecha límite de pago
+  paymentDate DateTime? // Nullable si aún no ha pagado
   status      String   @default("PENDING") // PENDING, PAID, OVERDUE
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
