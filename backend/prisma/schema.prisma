@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Apartment {
+  id           String     @id @default(uuid())
+  unitNumber   String     @unique // e.g., "Apt 101"
+  buildingBlock String    // e.g., "Block A"
+  bedrooms     Int
+  bathrooms    Int
+  monthlyRent  Float
+  status       String     @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE
+  photos       String[]   // Array of S3/MinIO Object Keys
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  contracts    Contract[]
+}
+
+model Tenant {
+  id        String     @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String     @unique
+  phone     String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  contracts Contract[]
+}
+
+model Contract {
+  id              String    @id @default(uuid())
+  apartmentId     String
+  tenantId        String
+  startDate       DateTime
+  endDate         DateTime
+  monthlyRentRate Float
+  contractPdfKey  String?   // S3/MinIO Object Key for the PDF
+  status          String    @default("ACTIVE") // ACTIVE, EXPIRED, TERMINATED
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  payments        Payment[]
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  contractId  String
+  amountPaid  Float
+  dueDate     DateTime
+  paymentDate DateTime?
+  status      String   @default("PENDING") // PENDING, PAID, OVERDUE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+}

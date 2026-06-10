@@ -96,3 +96,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backend nested workspace artifacts
+/backend/node_modules/
+/backend/generated/
