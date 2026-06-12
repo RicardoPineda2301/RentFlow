@@ -1,3 +1,4 @@
+import type { Response } from 'express';
 import { AppService } from './app.service';
 export declare class AppController {
     private readonly appService;
@@ -32,8 +33,9 @@ export declare class AppController {
         paid: number;
         pending: number;
     }[]>;
-    getContractsList(): Promise<{
+    getContractsList(expiring?: string, days?: string): Promise<{
         id: string;
+        apartmentProjectName: string;
         apartmentUnitNumber: string;
         tenantName: string;
         startDate: Date;
@@ -41,11 +43,16 @@ export declare class AppController {
         monthlyRentRate: number;
         status: string;
     }[]>;
-    getApartments(search?: string, status?: string, projectId?: string): Promise<({
+    getApartments(search?: string, status?: string, projectId?: string): Promise<{
+        activeContractId: string;
+        activeContractPdfKey: string | null;
         project: {
             name: string;
         };
-    } & {
+        contracts: {
+            id: string;
+            s3PdfKey: string | null;
+        }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -56,7 +63,8 @@ export declare class AppController {
         bathrooms: number;
         monthlyRent: number;
         status: string;
-    })[]>;
+        imageKeys: string[];
+    }[]>;
     getProjects(): Promise<{
         name: string;
         id: string;
@@ -72,6 +80,7 @@ export declare class AppController {
         bathrooms: number;
         monthlyRent: number;
         status: string;
+        imageKeys: string[];
     }>;
     updateApartment(id: string, payload: any): Promise<{
         id: string;
@@ -84,6 +93,7 @@ export declare class AppController {
         bathrooms: number;
         monthlyRent: number;
         status: string;
+        imageKeys: string[];
     }>;
     deleteApartment(id: string): Promise<{
         id: string;
@@ -96,7 +106,19 @@ export declare class AppController {
         bathrooms: number;
         monthlyRent: number;
         status: string;
+        imageKeys: string[];
     }>;
+    uploadApartmentImages(id: string, files: any[]): Promise<{
+        apartmentId: string;
+        bucket: string;
+        uploadedImages: {
+            key: string;
+            url: string;
+            filename: string;
+        }[];
+    }>;
+    redirectContractPdf(id: string, res: Response): Promise<void>;
+    redirectApartmentImage(id: string, res: Response, key?: string): Promise<void>;
     getTenants(search?: string): Promise<{
         id: string;
         createdAt: Date;

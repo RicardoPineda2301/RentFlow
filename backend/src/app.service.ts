@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { addDays, subMonths, format } from 'date-fns';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../prisma/prisma.service';
 
 type ExpiringContract = {
@@ -33,6 +34,7 @@ type PaymentStatusData = {
 
 type ContractListing = {
   id: string;
+  apartmentProjectName: string;
   apartmentUnitNumber: string;
   tenantName: string;
   startDate: Date;
@@ -75,9 +77,18 @@ type TenantQuery = {
   search?: string;
 };
 
+type ContractQuery = {
+  expiring?: boolean;
+  days?: number;
+};
+
 type UploadContractInput = {
   file: { originalname: string; mimetype: string; buffer: Buffer };
   contractId?: string;
+};
+
+type UploadApartmentImageInput = {
+  files: Array<{ originalname: string; mimetype: string; buffer: Buffer }>;
 };
 
 @Injectable()
@@ -100,6 +111,23 @@ export class AppService {
         secretAccessKey,
       },
     });
+  }
+
+  private getS3PublicBaseUrl() {
+    return process.env.S3_PUBLIC_URL || process.env.S3_ENDPOINT || 'http://localhost:9000';
+  }
+
+  private async createSignedImageUrl(bucket: string, key: string) {
+    const s3 = this.getS3Client();
+
+    return getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+      { expiresIn: 60 * 15 },
+    );
   }
 
   getHello(): string {
@@ -238,8 +266,23 @@ export class AppService {
     return chartData;
   }
 
-  async getContractsList(): Promise<ContractListing[]> {
+  async getContractsList(query: ContractQuery = {}): Promise<ContractListing[]> {
+    const { expiring, days = 30 } = query;
+    const where: any = {};
+
+    if (expiring) {
+      const now = new Date();
+      const limit = new Date(now);
+      limit.setDate(limit.getDate() + days);
+      where.status = 'ACTIVE';
+      where.endDate = {
+        gte: now,
+        lte: limit,
+      };
+    }
+
     const contracts = await this.prisma.contract.findMany({
+      where,
       orderBy: { endDate: 'asc' },
       select: {
         id: true,
@@ -250,6 +293,11 @@ export class AppService {
         apartment: {
           select: {
             unitNumber: true,
+            project: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         tenant: {
@@ -263,6 +311,7 @@ export class AppService {
 
     return contracts.map((contract) => ({
       id: contract.id,
+      apartmentProjectName: contract.apartment.project.name,
       apartmentUnitNumber: contract.apartment.unitNumber,
       tenantName: `${contract.tenant.firstNames} ${contract.tenant.lastNames}`,
       startDate: contract.startDate,
@@ -275,7 +324,7 @@ export class AppService {
   async getApartments(query: ApartmentQuery) {
     const { search, status, projectId } = query;
 
-    return this.prisma.apartment.findMany({
+    const apartments = await this.prisma.apartment.findMany({
       where: {
         ...(status ? { status } : {}),
         ...(projectId ? { projectId } : {}),
@@ -294,9 +343,24 @@ export class AppService {
             name: true,
           },
         },
+        contracts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { startDate: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            s3PdfKey: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return apartments.map((apt) => ({
+      ...apt,
+      activeContractId: apt.contracts[0]?.id ?? null,
+      activeContractPdfKey: apt.contracts[0]?.s3PdfKey ?? null,
+    }));
   }
 
   async getProjects() {
@@ -379,11 +443,90 @@ export class AppService {
       });
     }
 
-    const endpoint = process.env.S3_PUBLIC_URL || process.env.S3_ENDPOINT || 'http://localhost:9000';
     return {
       key,
       bucket,
-      url: `${endpoint.replace(/\/$/, '')}/${bucket}/${key}`,
+      url: `${this.getS3PublicBaseUrl().replace(/\/$/, '')}/${bucket}/${key}`,
+    };
+  }
+
+  async uploadApartmentImages(apartmentId: string, files: UploadApartmentImageInput['files']) {
+    const bucket = process.env.S3_APARTMENT_IMAGES_BUCKET || 'rentflowtest02images';
+    const apartment = await this.prisma.apartment.findUnique({
+      where: { id: apartmentId },
+      select: { imageKeys: true },
+    });
+
+    if (!apartment) {
+      throw new NotFoundException(`Apartment ${apartmentId} not found.`);
+    }
+
+    const s3 = this.getS3Client();
+    const uploadedImages = [] as Array<{ key: string; url: string; filename: string }>;
+
+    for (const [index, file] of files.entries()) {
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const key = `apartments/${apartmentId}/${Date.now()}-${index}-${safeName}`;
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        }),
+      );
+
+      uploadedImages.push({
+        key,
+        filename: file.originalname,
+        url: `${this.getS3PublicBaseUrl().replace(/\/$/, '')}/${bucket}/${key}`,
+      });
+    }
+
+    await this.prisma.apartment.update({
+      where: { id: apartmentId },
+      data: {
+        imageKeys: [...apartment.imageKeys, ...uploadedImages.map((image) => image.key)],
+      },
+    });
+
+    return {
+      apartmentId,
+      bucket,
+      uploadedImages,
+    };
+  }
+
+  async getContractPdfRedirect(contractId: string) {
+    const bucket = process.env.S3_BUCKET || 'rentflowtest01';
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { s3PdfKey: true },
+    });
+
+    if (!contract?.s3PdfKey) {
+      throw new NotFoundException('No PDF found for this contract.');
+    }
+
+    return {
+      url: await this.createSignedImageUrl(bucket, contract.s3PdfKey),
+    };
+  }
+
+  async getApartmentImageRedirect(apartmentId: string, key: string) {
+    const bucket = process.env.S3_APARTMENT_IMAGES_BUCKET || 'rentflowtest02images';
+    const apartment = await this.prisma.apartment.findUnique({
+      where: { id: apartmentId },
+      select: { imageKeys: true },
+    });
+
+    if (!apartment || !apartment.imageKeys.includes(key)) {
+      throw new NotFoundException('Apartment image not found.');
+    }
+
+    return {
+      url: await this.createSignedImageUrl(bucket, key),
     };
   }
 }

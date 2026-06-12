@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 
 type ContractListing = {
   id: string;
+  apartmentProjectName: string;
   apartmentUnitNumber: string;
   tenantName: string;
   startDate: string;
@@ -95,7 +96,7 @@ export default async function LeasesPage() {
                 <tbody>
                   {contracts.map((contract) => (
                     <tr key={contract.id} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4 font-medium">{contract.apartmentUnitNumber}</td>
+                      <td className="py-3 px-4 font-medium">{contract.apartmentProjectName} · {contract.apartmentUnitNumber}</td>
                       <td className="py-3 px-4">{contract.tenantName}</td>
                       <td className="py-3 px-4">
                         {dateFormatter.format(new Date(contract.startDate))}

@@ -36,8 +36,11 @@ let AppController = class AppController {
     getRevenueChart() {
         return this.appService.getRevenueChart();
     }
-    getContractsList() {
-        return this.appService.getContractsList();
+    getContractsList(expiring, days) {
+        return this.appService.getContractsList({
+            expiring: expiring === 'true',
+            days: days ? Number(days) : undefined,
+        });
     }
     getApartments(search, status, projectId) {
         return this.appService.getApartments({ search, status, projectId });
@@ -53,6 +56,23 @@ let AppController = class AppController {
     }
     deleteApartment(id) {
         return this.appService.deleteApartment(id);
+    }
+    uploadApartmentImages(id, files) {
+        if (!files || files.length === 0) {
+            throw new common_1.BadRequestException('At least one image file is required.');
+        }
+        return this.appService.uploadApartmentImages(id, files);
+    }
+    async redirectContractPdf(id, res) {
+        const { url } = await this.appService.getContractPdfRedirect(id);
+        return res.redirect(url);
+    }
+    async redirectApartmentImage(id, res, key) {
+        if (!key) {
+            throw new common_1.BadRequestException('An image key is required.');
+        }
+        const { url } = await this.appService.getApartmentImageRedirect(id, key);
+        return res.redirect(url);
     }
     getTenants(search) {
         return this.appService.getTenants({ search });
@@ -106,8 +126,10 @@ __decorate([
 ], AppController.prototype, "getRevenueChart", null);
 __decorate([
     (0, common_1.Get)('contracts'),
+    __param(0, (0, common_1.Query)('expiring')),
+    __param(1, (0, common_1.Query)('days')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], AppController.prototype, "getContractsList", null);
 __decorate([
@@ -147,6 +169,32 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], AppController.prototype, "deleteApartment", null);
+__decorate([
+    (0, common_1.Post)('apartments/:id/images'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FilesInterceptor)('files', 10)),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Array]),
+    __metadata("design:returntype", void 0)
+], AppController.prototype, "uploadApartmentImages", null);
+__decorate([
+    (0, common_1.Get)('contracts/:id/pdf/redirect'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AppController.prototype, "redirectContractPdf", null);
+__decorate([
+    (0, common_1.Get)('apartments/:id/images/redirect'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, common_1.Query)('key')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:returntype", Promise)
+], AppController.prototype, "redirectApartmentImage", null);
 __decorate([
     (0, common_1.Get)('tenants'),
     __param(0, (0, common_1.Query)('search')),

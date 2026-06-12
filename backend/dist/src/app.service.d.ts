@@ -25,6 +25,7 @@ type PaymentStatusData = {
 };
 type ContractListing = {
     id: string;
+    apartmentProjectName: string;
     apartmentUnitNumber: string;
     tenantName: string;
     startDate: Date;
@@ -61,6 +62,10 @@ type ApartmentQuery = {
 type TenantQuery = {
     search?: string;
 };
+type ContractQuery = {
+    expiring?: boolean;
+    days?: number;
+};
 type UploadContractInput = {
     file: {
         originalname: string;
@@ -69,21 +74,35 @@ type UploadContractInput = {
     };
     contractId?: string;
 };
+type UploadApartmentImageInput = {
+    files: Array<{
+        originalname: string;
+        mimetype: string;
+        buffer: Buffer;
+    }>;
+};
 export declare class AppService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     private getS3Client;
+    private getS3PublicBaseUrl;
+    private createSignedImageUrl;
     getHello(): string;
     getDashboardSummary(): Promise<DashboardSummary>;
     getOccupancyDistribution(): Promise<OccupancyData[]>;
     getPaymentStatusDistribution(): Promise<PaymentStatusData[]>;
     getRevenueChart(): Promise<ChartDataPoint[]>;
-    getContractsList(): Promise<ContractListing[]>;
-    getApartments(query: ApartmentQuery): Promise<({
+    getContractsList(query?: ContractQuery): Promise<ContractListing[]>;
+    getApartments(query: ApartmentQuery): Promise<{
+        activeContractId: string;
+        activeContractPdfKey: string | null;
         project: {
             name: string;
         };
-    } & {
+        contracts: {
+            id: string;
+            s3PdfKey: string | null;
+        }[];
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -94,7 +113,8 @@ export declare class AppService {
         bathrooms: number;
         monthlyRent: number;
         status: string;
-    })[]>;
+        imageKeys: string[];
+    }[]>;
     getProjects(): Promise<{
         name: string;
         id: string;
@@ -110,6 +130,7 @@ export declare class AppService {
         bathrooms: number;
         monthlyRent: number;
         status: string;
+        imageKeys: string[];
     }>;
     updateApartment(id: string, payload: Partial<ApartmentPayload>): Promise<{
         id: string;
@@ -122,6 +143,7 @@ export declare class AppService {
         bathrooms: number;
         monthlyRent: number;
         status: string;
+        imageKeys: string[];
     }>;
     deleteApartment(id: string): Promise<{
         id: string;
@@ -134,6 +156,7 @@ export declare class AppService {
         bathrooms: number;
         monthlyRent: number;
         status: string;
+        imageKeys: string[];
     }>;
     getTenants(query: TenantQuery): Promise<{
         id: string;
@@ -174,6 +197,21 @@ export declare class AppService {
     uploadContractFile({ file, contractId }: UploadContractInput): Promise<{
         key: string;
         bucket: string;
+        url: string;
+    }>;
+    uploadApartmentImages(apartmentId: string, files: UploadApartmentImageInput['files']): Promise<{
+        apartmentId: string;
+        bucket: string;
+        uploadedImages: {
+            key: string;
+            url: string;
+            filename: string;
+        }[];
+    }>;
+    getContractPdfRedirect(contractId: string): Promise<{
+        url: string;
+    }>;
+    getApartmentImageRedirect(apartmentId: string, key: string): Promise<{
         url: string;
     }>;
 }

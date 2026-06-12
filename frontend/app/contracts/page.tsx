@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 
 type Contract = {
   id: string;
+  apartmentProjectName: string;
   apartmentUnitNumber: string;
   tenantName: string;
   startDate: string;
@@ -35,10 +37,17 @@ export default function ContractsPage() {
   const [selectedContractId, setSelectedContractId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const searchParams = useSearchParams();
+  const expiringOnly = searchParams.get("expiring") === "true";
   const [message, setMessage] = useState<string>("");
+  const [sortKey, setSortKey] = useState<
+    "apartment" | "tenant" | "startDate" | "endDate" | "status" | "monthlyRentRate"
+  >("endDate");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const fetchContracts = async () => {
-    const response = await fetch(`${API_BASE_URL}/contracts`, { cache: "no-store" });
+    const query = expiringOnly ? "?expiring=true" : "";
+    const response = await fetch(`${API_BASE_URL}/contracts${query}`, { cache: "no-store" });
     if (!response.ok) return;
     const data = (await response.json()) as Contract[];
     setContracts(data);
@@ -46,7 +55,7 @@ export default function ContractsPage() {
 
   useEffect(() => {
     fetchContracts();
-  }, []);
+  }, [expiringOnly]);
 
   const onUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +91,70 @@ export default function ContractsPage() {
     }
   };
 
+  const sortedContracts = useMemo(() => {
+    const sorted = [...contracts];
+    const direction = sortDirection === "asc" ? 1 : -1;
+
+    sorted.sort((a, b) => {
+      let left: string | number = "";
+      let right: string | number = "";
+
+      switch (sortKey) {
+        case "apartment":
+          left = a.apartmentUnitNumber;
+          right = b.apartmentUnitNumber;
+          break;
+        case "tenant":
+          left = a.tenantName;
+          right = b.tenantName;
+          break;
+        case "startDate":
+          left = new Date(a.startDate).getTime();
+          right = new Date(b.startDate).getTime();
+          break;
+        case "endDate":
+          left = new Date(a.endDate).getTime();
+          right = new Date(b.endDate).getTime();
+          break;
+        case "status":
+          left = a.status;
+          right = b.status;
+          break;
+        case "monthlyRentRate":
+          left = a.monthlyRentRate;
+          right = b.monthlyRentRate;
+          break;
+      }
+
+      if (typeof left === "number" && typeof right === "number") {
+        return (left - right) * direction;
+      }
+
+      return String(left).localeCompare(String(right)) * direction;
+    });
+
+    return sorted;
+  }, [contracts, sortDirection, sortKey]);
+
+  const toggleSort = (
+    key: "apartment" | "tenant" | "startDate" | "endDate" | "status" | "monthlyRentRate",
+  ) => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection("asc");
+  };
+
+  const sortIndicator = (
+    key: "apartment" | "tenant" | "startDate" | "endDate" | "status" | "monthlyRentRate",
+  ) => {
+    if (sortKey !== key) return "";
+    return sortDirection === "asc" ? " ▲" : " ▼";
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -105,7 +178,7 @@ export default function ContractsPage() {
               <option value="">Upload without linking</option>
               {contracts.map((contract) => (
                 <option key={contract.id} value={contract.id}>
-                  {contract.apartmentUnitNumber} - {contract.tenantName}
+                  {contract.apartmentProjectName} · {contract.apartmentUnitNumber} - {contract.tenantName}
                 </option>
               ))}
             </select>
@@ -128,26 +201,56 @@ export default function ContractsPage() {
           <CardTitle>Contracts ({contracts.length})</CardTitle>
         </CardHeader>
         <CardContent>
+          {expiringOnly ? (
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              Showing leases expiring within the next 30 days. <a href="/contracts" className="font-semibold text-primary hover:underline">View all contracts</a>
+            </div>
+          ) : null}
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Apartment</TableHead>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Rent</TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("apartment")}>
+                    Apartment{sortIndicator("apartment")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("tenant")}>
+                    Tenant{sortIndicator("tenant")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("startDate")}>
+                    Start{sortIndicator("startDate")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("endDate")}>
+                    End{sortIndicator("endDate")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("status")}>
+                    Status{sortIndicator("status")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("monthlyRentRate")}>
+                    Rent{sortIndicator("monthlyRentRate")}
+                  </button>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contracts.length === 0 ? (
+              {sortedContracts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6}>No contracts found.</TableCell>
                 </TableRow>
               ) : (
-                contracts.map((contract) => (
+                sortedContracts.map((contract) => (
                   <TableRow key={contract.id}>
-                    <TableCell>{contract.apartmentUnitNumber}</TableCell>
+                    <TableCell>{contract.apartmentProjectName} · {contract.apartmentUnitNumber}</TableCell>
                     <TableCell>{contract.tenantName}</TableCell>
                     <TableCell>{dateFormatter.format(new Date(contract.startDate))}</TableCell>
                     <TableCell>{dateFormatter.format(new Date(contract.endDate))}</TableCell>
@@ -158,6 +261,7 @@ export default function ContractsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

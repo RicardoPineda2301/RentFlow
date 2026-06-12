@@ -17,10 +17,10 @@ export default function RootLayout({
       <body className="flex h-full overflow-hidden">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-y-auto bg-muted/40">
-          <header className="flex h-16 items-center border-b bg-card px-8">
-            <h2 className="text-sm font-semibold text-muted-foreground">Internal Operations Portal</h2>
+          <header className="flex h-16 items-center border-b bg-card px-4 md:px-8">
+            <h2 className="text-sm font-semibold text-muted-foreground pl-10 md:pl-0">Internal Operations Portal</h2>
           </header>
-          <div className="p-8">
+          <div className="p-4 md:p-8">
             {children}
           </div>
         </main>

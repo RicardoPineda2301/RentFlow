@@ -146,7 +146,7 @@ export default async function DashboardHome() {
                     : "Unable to load expiring leases right now."}
                 </p>
               </div>
-              <Link href="/contracts" className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline">
+              <Link href="/contracts?expiring=true" className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline">
                 Review Leases <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>

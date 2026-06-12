@@ -9,9 +9,12 @@ import {
   Post,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { AppService } from './app.service';
 
 @Controller()
@@ -44,8 +47,14 @@ export class AppController {
   }
 
   @Get('contracts')
-  getContractsList() {
-    return this.appService.getContractsList();
+  getContractsList(
+    @Query('expiring') expiring?: string,
+    @Query('days') days?: string,
+  ) {
+    return this.appService.getContractsList({
+      expiring: expiring === 'true',
+      days: days ? Number(days) : undefined,
+    });
   }
 
   @Get('apartments')
@@ -75,6 +84,42 @@ export class AppController {
   @Delete('apartments/:id')
   deleteApartment(@Param('id') id: string) {
     return this.appService.deleteApartment(id);
+  }
+
+  @Post('apartments/:id/images')
+  @UseInterceptors(FilesInterceptor('files', 10))
+  uploadApartmentImages(
+    @Param('id') id: string,
+    @UploadedFiles() files: any[],
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one image file is required.');
+    }
+
+    return this.appService.uploadApartmentImages(id, files);
+  }
+
+  @Get('contracts/:id/pdf/redirect')
+  async redirectContractPdf(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { url } = await this.appService.getContractPdfRedirect(id);
+    return res.redirect(url);
+  }
+
+  @Get('apartments/:id/images/redirect')
+  async redirectApartmentImage(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Query('key') key?: string,
+  ) {
+    if (!key) {
+      throw new BadRequestException('An image key is required.');
+    }
+
+    const { url } = await this.appService.getApartmentImageRedirect(id, key);
+    return res.redirect(url);
   }
 
   @Get('tenants')

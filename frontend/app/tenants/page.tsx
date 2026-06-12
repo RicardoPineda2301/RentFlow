@@ -43,6 +43,8 @@ export default function TenantsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<"name" | "email" | "phone">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -112,6 +114,50 @@ export default function TenantsPage() {
     fetchTenants();
   };
 
+  const sortedTenants = useMemo(() => {
+    const sorted = [...tenants];
+    const direction = sortDirection === "asc" ? 1 : -1;
+
+    sorted.sort((a, b) => {
+      let left = "";
+      let right = "";
+
+      switch (sortKey) {
+        case "name":
+          left = `${a.firstNames} ${a.lastNames}`;
+          right = `${b.firstNames} ${b.lastNames}`;
+          break;
+        case "email":
+          left = a.email;
+          right = b.email;
+          break;
+        case "phone":
+          left = a.phone;
+          right = b.phone;
+          break;
+      }
+
+      return left.localeCompare(right) * direction;
+    });
+
+    return sorted;
+  }, [sortDirection, sortKey, tenants]);
+
+  const toggleSort = (key: "name" | "email" | "phone") => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection("asc");
+  };
+
+  const sortIndicator = (key: "name" | "email" | "phone") => {
+    if (sortKey !== key) return "";
+    return sortDirection === "asc" ? " ▲" : " ▼";
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -173,12 +219,25 @@ export default function TenantsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
 
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("name")}>
+                    Name{sortIndicator("name")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("email")}>
+                    Email{sortIndicator("email")}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button type="button" onClick={() => toggleSort("phone")}>
+                    Phone{sortIndicator("phone")}
+                  </button>
+                </TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -187,12 +246,12 @@ export default function TenantsPage() {
                 <TableRow>
                   <TableCell colSpan={4}>Loading...</TableCell>
                 </TableRow>
-              ) : tenants.length === 0 ? (
+              ) : sortedTenants.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4}>No tenants found.</TableCell>
                 </TableRow>
               ) : (
-                tenants.map((tenant) => (
+                sortedTenants.map((tenant) => (
                   <TableRow key={tenant.id}>
                     <TableCell>{tenant.firstNames} {tenant.lastNames}</TableCell>
                     <TableCell>{tenant.email}</TableCell>
@@ -210,6 +269,7 @@ export default function TenantsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
