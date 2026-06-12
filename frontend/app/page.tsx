@@ -1,13 +1,108 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Users, AlertTriangle, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import DashboardCharts from "@/components/dashboard/charts";
 
-export default function DashboardHome() {
-  // Mock metrics mirroring typical landlord data setups
-  const metrics = [
-    { title: "Total Apartments", value: "48", icon: Building2, description: "Across 3 residential blocks" },
-    { title: "Occupancy Rate", value: "92%", icon: Users, description: "44 Active tenants out of 48 total" },
-    { title: "Pending Collections", value: "$4,200", icon: AlertTriangle, description: "5 overdue rents this month", color: "text-destructive" },
-  ];
+type DashboardSummary = {
+  totalApartments: number;
+  occupiedApartments: number;
+  occupancyRate: number;
+  pendingCollections: number;
+  pendingPaymentsCount: number;
+  expiringContractsCount: number;
+  expiringContracts: Array<{
+    id: string;
+    endDate: string;
+    apartmentUnitNumber: string;
+  }>;
+};
+
+const currencyFormatter = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+
+const dateFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+async function getDashboardSummary(): Promise<DashboardSummary | null> {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/dashboard/summary`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as DashboardSummary;
+  } catch {
+    return null;
+  }
+}
+
+export default async function DashboardHome() {
+  const summary = await getDashboardSummary();
+
+  const metrics = summary
+    ? [
+        {
+          title: "Total Apartments",
+          value: String(summary.totalApartments),
+          icon: Building2,
+          description: `Across occupied and available units`,
+        },
+        {
+          title: "Occupancy Rate",
+          value: `${summary.occupancyRate.toFixed(1)}%`,
+          icon: Users,
+          description: `${summary.occupiedApartments} occupied out of ${summary.totalApartments}`,
+        },
+        {
+          title: "Pending Collections",
+          value: currencyFormatter.format(summary.pendingCollections),
+          icon: AlertTriangle,
+          description: `${summary.pendingPaymentsCount} pending or overdue payments`,
+          color: "text-destructive",
+        },
+      ]
+    : [
+        {
+          title: "Total Apartments",
+          value: "-",
+          icon: Building2,
+          description: "Backend unavailable",
+        },
+        {
+          title: "Occupancy Rate",
+          value: "-",
+          icon: Users,
+          description: "Backend unavailable",
+        },
+        {
+          title: "Pending Collections",
+          value: "-",
+          icon: AlertTriangle,
+          description: "Backend unavailable",
+          color: "text-destructive",
+        },
+      ];
+
+  const expiringContracts = summary?.expiringContracts ?? [];
+  const expiringText = expiringContracts.length
+    ? expiringContracts
+        .map(
+          (contract) =>
+            `${contract.apartmentUnitNumber} (${dateFormatter.format(new Date(contract.endDate))})`,
+        )
+        .join(", ")
+    : "No active leases expiring in the next 30 days.";
 
   return (
     <div className="space-y-8">
@@ -31,6 +126,9 @@ export default function DashboardHome() {
         ))}
       </div>
 
+      {/* Charts Section */}
+      <DashboardCharts />
+
       {/* Quick Insights Section */}
       <Card className="col-span-4">
         <CardHeader>
@@ -42,11 +140,15 @@ export default function DashboardHome() {
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Upcoming Contract Expirations</p>
-                <p className="text-xs text-muted-foreground">3 leases are expiring within the next 30 days (Apt 104, Apt 202, Apt 311).</p>
+                <p className="text-xs text-muted-foreground">
+                  {summary
+                    ? `${summary.expiringContractsCount} leases are expiring within the next 30 days. ${expiringText}`
+                    : "Unable to load expiring leases right now."}
+                </p>
               </div>
-              <button className="text-xs font-semibold text-primary flex items-center gap-1">
+              <Link href="/contracts" className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline">
                 Review Leases <ArrowUpRight className="h-3 w-3" />
-              </button>
+              </Link>
             </div>
           </div>
         </CardContent>
