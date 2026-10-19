@@ -1,72 +1,113 @@
-# RentFlow - Internal Operations Portal
+# RentFlow - Property Management Platform
 
-RentFlow is a high-performance, private B2B property management system engineered to modernize operations for rental businesses currently reliant on legacy spreadsheet ecosystems (Excel/CSV). 
+**A modern, full-stack property management system designed to replace spreadsheet-based rental business operations.**
 
-Built with a secure-by-design, "private cloud" infrastructure mentality, RentFlow transitions manual data tracking into a centralized, robust relational data platform while maintaining strict air-gapped data ownership.
+RentFlow is a comprehensive B2B web application that digitizes and centralizes property management workflows. Built for rental businesses still relying on Excel and CSV files, RentFlow provides a secure, scalable alternative that maintains complete data ownership while delivering powerful analytics and streamlined operations.
 
-## Key Architecture Pillars
-* **Relational Persistence:** Migrates flat Excel tracking into structured PostgreSQL transactions via Prisma ORM.
-* **S3 Compatible Object Storage:** Local file and document lifecycle mirroring utilizing MinIO.
-* **Intelligent Operational Analytics:** Purpose-built, performant reporting interfaces replacing manual spreadsheet auditing.
+## Why RentFlow?
 
----
+Many property management companies and individual landlords still manage their entire operation through spreadsheets. This approach leads to:
+- **Data fragmentation** across multiple files and versions
+- **Manual errors** from duplicate entries and formula mistakes
+- **No audit trail** for critical business changes
+- **Limited scalability** as the portfolio grows
+- **Security risks** with files stored on local machines
 
-## Technical Stack (Local Environment)
+RentFlow solves these problems by providing a centralized, secure platform that grows with your business.
 
-* **Frontend Framework:** Next.js 14+ (React) using TypeScript
-* **Design System:** Tailwind CSS + Shadcn/UI (Nova Design Preset via Radix Primitives)
-* **Backend Architecture:** Node.js (NestJS Blueprint Ecosystem)
-* **Database Layer:** PostgreSQL 16
-* **Object Store Middleware:** MinIO (Local S3 Engine)
-* **Infrastructure Virtualization:** Docker Compose
+## Key Features
 
----
+### For Business Operations
+✅ **Tenant Management** - Track tenant information, lease agreements, and communication history in one place
+✅ **Property Portfolio** - Manage multiple properties with detailed records, documents, and status tracking
+✅ **Document Storage** - Securely store and organize lease agreements, invoices, and property photos
+✅ **Financial Tracking** - Monitor payments, expenses, and profitability with built-in reporting
+✅ **Analytics Dashboard** - Visualize key metrics like occupancy rates, revenue trends, and maintenance costs
 
-## Local Setup & Installation
+### For Technical Excellence
+✅ **Full-Stack Modern Architecture** - Next.js frontend with NestJS backend
+✅ **Type-Safe Development** - TypeScript throughout the entire codebase
+✅ **Relational Database** - PostgreSQL with Prisma ORM for data integrity
+✅ **Cloud-Ready Storage** - S3-compatible object storage (MinIO for local development)
+✅ **Containerized Deployment** - Docker Compose for consistent environments
 
-Follow these steps to spin up the entire application infrastructure locally.
+## Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 16 (React), TypeScript |
+| **UI/UX** | Tailwind CSS, Shadcn/UI, Radix Primitives |
+| **Backend** | NestJS 11, Node.js |
+| **Database** | PostgreSQL 16 |
+| **Storage** | MinIO (S3-compatible) |
+| **Infrastructure** | Docker Compose |
+
+## Project Structure
+
+```
+RentFlow/
+├── frontend/      # Next.js application with React components
+├── backend/       # NestJS API with business logic
+├── docker-compose.yml  # Container orchestration
+└── README.md      # This file
+```
+
+## Getting Started
 
 ### Prerequisites
-Ensure you have the following global dependencies installed on your system:
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* [Node.js (v18 or higher)](https://nodejs.org/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for database and storage)
+- [Node.js v18+](https://nodejs.org/) (for frontend and backend)
 
-### Infrastructure Virtualization (Containers)
-From the root of the project, spin up the local database and S3-compatible storage cluster:
+### Quick Setup
 
-docker-compose up -d
+1. **Start the infrastructure** (PostgreSQL + MinIO):
+   ```bash
+   docker-compose up -d
+   ```
 
-PostgreSQL Listening Port: 5432
-MinIO Object Console: http://localhost:9001 (Credentials: minio_admin / minio_password123)
+2. **Set up the frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-### Frontend Execution
-Navigate to the frontend container and initialize the development instance:
+3. **Set up the backend:**
+   ```bash
+   cd backend
+   npm install
+   npm run start:dev
+   ```
 
-cd frontend
-npm install
+4. **Initialize MinIO storage:**
+   - Visit http://localhost:9001
+   - Login: `minio_admin` / `minio_password123`
+   - Create a bucket named `rentflow-local`
 
-### Backend Execution
-Navigate to the frontend container and initialize the development instance:
+### Access Points
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:3001
+- **MinIO Console:** http://localhost:9001
+- **PostgreSQL:** localhost:5432
 
-cd backend
-npm install
+## What This Project Demonstrates
 
-### Bucket initialization
-Open your browser and go to http://localhost:9001.
+This project showcases a complete, production-ready full-stack application with:
 
-    Log in using the credentials we set up in the docker file:
+🎯 **Full-Stack Development** - End-to-end ownership from UI to database
+🎯 **Modern Tooling** - Next.js, NestJS, TypeScript, Prisma, Tailwind
+🎯 **Architectural Best Practices** - Clean separation of concerns, modular design
+🎯 **DevOps Skills** - Docker containerization, multi-service orchestration
+🎯 **Problem-Solving** - Addressing real business pain points with technical solutions
+🎯 **Security Mindset** - Private-by-default, air-gapped capable architecture
 
-        Username: minio_admin
-        Password: minio_password123
+## Ideal For
 
-This will open up the MinIO Object Browser Console, which looks and acts like a local version of the AWS S3 Console.
+- Property management companies looking to modernize operations
+- Landlords with growing portfolios needing better organization
+- Developers interested in full-stack TypeScript applications
+- Teams wanting to understand modern web application architecture
 
-**Create your first bucket**
+---
 
-To get it ready for our upcoming frontend work, let's create a bucket to hold the apartment files:
-
-    Once logged into the MinIO console, click on Buckets in the sidebar.
-
-    Click Create Bucket.
-
-    Name it rentflow-local and hit save.
+**Built with ❤️ by Ricardo Sebastián Pineda de León | Copyright © 2026**
