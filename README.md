@@ -110,4 +110,4 @@ This project showcases a complete, production-ready full-stack application with:
 
 ---
 
-**Built with ❤️ by Ricardo Sebastián Pineda de León | Copyright © 2026**
+**Built by Ricardo Sebastián Pineda de León | Copyright © 2026**
